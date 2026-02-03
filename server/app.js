@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 connectDB();
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:5173", process.env.CLIENT_URL],
   credentials: true
 }));
 
@@ -23,7 +23,7 @@ app.use(cors({
 app.use(logger);
 app.use(cookieParser());
 // app.use(cors({
-//   origin: process.env.NODE_ENV === 'production' 
+//   origin: process.env.NODE_ENV === 'development' 
     // ? process.env.CLIENT_URL 
 //     : 'http://localhost:5173',
 //   credentials: true
