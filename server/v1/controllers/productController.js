@@ -1,15 +1,24 @@
 const axios = require('axios');
 const csv = require('csv-parser');
-const { extractGoogleDriveId } = require('google-drive-id-extractor'); // npm install google-drive-id-extractor [web:4]
-const {MODEL_SHEETS} = require('../../config/configs'); // Load GID mappings from config
+const { extractGoogleDriveId } = require('google-drive-id-extractor');
+const { MODEL_SHEETS } = require('../../config/configs');
+
+// =============================
+// CONFIG
+// =============================
 
 const SPREADSHEET_ID = '19cNC8a3CLMMnyoOdPN4NGex2I10bxc6BcyFxudv-UP4';
-const TOTAL_PRICES_GID = '0'; // Update with actual gid for "total_prices" sheet
-const PDF_DATA_GID = '336099973'; // Update with actual gid for "PDF" sheet
 
-// Helper to extract Drive file ID [web:4]
+const TOTAL_PRICES_GID = '0';
+const PDF_DATA_GID = '336099973';
+
+// =============================
+// GOOGLE DRIVE HELPER
+// =============================
+
 const getDriveId = (url) => {
   if (!url) return null;
+
   try {
     return extractGoogleDriveId(url);
   } catch {
@@ -18,129 +27,261 @@ const getDriveId = (url) => {
   }
 };
 
-// Helper to fetch costing items for a model
-const getCostingItems = async (modelNo) => {
-  let costingItems = [];
-  const sheetGid = MODEL_SHEETS[modelNo?.trim()];
-  if (sheetGid) {
-    try {
-      const modelData = await fetchSheetData(sheetGid);
-      costingItems = modelData
-        .map(r => ({
-          item: r.ITEMS?.trim() || '',
-          qty: parseFloat(r.QTY) || 0,
-          rate: parseFloat(r.RATE) || 0,
-          amount: parseFloat(r.AMOUNT) || 0
-        }))
-        .filter(item => item.item);
-    } catch (e) {
-      console.log(`No costing sheet for ${modelNo}:`, e.message);
-    }
-  }
-  return costingItems;
-};
+// =============================
+// FETCH SHEET DATA (CSV)
+// =============================
 
-// Fetch CSV from public Google Sheet [web:12][web:16]
 const fetchSheetData = async (gid) => {
-  const csvUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${gid}`;
-  const response = await axios.get(csvUrl, { responseType: 'stream' });
-  return new Promise((resolve, reject) => {
-    const results = [];
-    response.data.pipe(csv())
-      .on('data', (row) => results.push(row))
-      .on('end', () => resolve(results))
-      .on('error', reject);
-  });
-};
-
-exports.getAllProducts = async (req, res) => {
   try {
-    // 1. Fetch PDF data sheet (model_no, image_link, product_name, etc.)
-    const pdfData = await fetchSheetData(PDF_DATA_GID);
-    
-    // 2. Fetch total_prices sheet for model/amount mapping
-    const pricesData = await fetchSheetData(TOTAL_PRICES_GID);
 
-    // Create model -> price map
-    const priceMap = {};
-    pricesData.forEach(row => {
-      if (row.model && row.amount) {
-        priceMap[row.model.trim()] = parseFloat(row.amount) || 0;
-      }
+    const csvUrl =
+      `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${gid}`;
+
+    const response = await axios.get(csvUrl, {
+      responseType: 'stream'
     });
 
-    // 3. Process PDF data into products
+    return new Promise((resolve, reject) => {
+
+      const results = [];
+
+      response.data
+        .pipe(csv())
+        .on('data', (row) => results.push(row))
+        .on('end', () => resolve(results))
+        .on('error', reject);
+
+    });
+
+  } catch (err) {
+    console.error("fetchSheetData error:", err.message);
+    return [];
+  }
+};
+
+// =============================
+// COSTING ITEMS HELPER
+// =============================
+
+const getCostingItems = async (modelNo) => {
+
+  if (!modelNo) return [];
+
+  const trimmedModelNo = modelNo.trim().toUpperCase();
+
+  const gid = MODEL_SHEETS[trimmedModelNo];
+
+  if (!gid) {
+    console.warn("Model not found in MODEL_SHEETS:", trimmedModelNo);
+    return [];
+  }
+
+  try {
+
+    const modelData = await fetchSheetData(gid);
+
+    if (!Array.isArray(modelData)) return [];
+
+    const costingItems = modelData
+      .map(r => ({
+        item: String(
+          r.ITEMS ||
+          r.Items ||
+          r.Item ||
+          ""
+        ).trim(),
+
+        qty: Number(r.QTY || r.Qty || 0),
+
+        rate: Number(r.RATE || r.Rate || 0),
+
+        amount: Number(
+          r.AMOUNT ||
+          r.Amount ||
+          0
+        )
+      }))
+      .filter(i => i.item);
+
+    return costingItems;
+
+  } catch (e) {
+    console.warn(`No costing sheet for ${trimmedModelNo}:`, e.message);
+    return [];
+  }
+};
+
+// =============================
+// GET ALL PRODUCTS
+// =============================
+
+exports.getAllProducts = async (req, res) => {
+
+  try {
+
+    const pdfData = await fetchSheetData(PDF_DATA_GID);
+
+    const pricesData = await fetchSheetData(TOTAL_PRICES_GID);
+
+    // Create price map
+    const priceMap = {};
+
+    pricesData.forEach(row => {
+
+      if (row.model && row.amount) {
+        priceMap[row.model.trim()] =
+          parseFloat(row.amount) || 0;
+      }
+
+    });
+
     const products = await Promise.all(
+
       pdfData
         .filter(row => row.model_no && row.product_name)
         .map(async (row) => {
+
           const modelNo = row.model_no?.trim() || '';
-          const imageId = getDriveId(row.image_link || row.image);
-          const datasheetId = getDriveId(row.pdf_link || row.datasheet);
-          
-          // Fetch costing items for this model
-          const costingItems = await getCostingItems(modelNo);
-          
+
+          const imageId =
+            getDriveId(row.image_link || row.image);
+
+          const datasheetId =
+            getDriveId(row.pdf_link || row.datasheet);
+
+          const costingItems =
+            await getCostingItems(modelNo);
+
           return {
+
             _id: modelNo,
             modelNo,
-            title: row.product_name?.trim() || `Model ${modelNo}`,
-            imageUrl: imageId ? `https://drive.google.com/uc?id=${imageId}` : '/placeholder.jpg',
-            description: row.description || `High-precision casting project: ${modelNo}`,
-            totalAmount: priceMap[modelNo] || 0,
-            datasheetUrl: datasheetId ? `https://drive.google.com/file/d/${datasheetId}/view` : null,
+
+            title:
+              row.product_name?.trim()
+              || `Model ${modelNo}`,
+
+            imageUrl:
+              imageId
+                ? `https://drive.google.com/uc?id=${imageId}`
+                : '/placeholder.jpg',
+
+            description:
+              row.description
+              || `High-precision casting project: ${modelNo}`,
+
+            totalAmount:
+              priceMap[modelNo] || 0,
+
+            datasheetUrl:
+              datasheetId
+                ? `https://drive.google.com/file/d/${datasheetId}/view`
+                : null,
+
             costingItems,
-            isFeatured: modelNo.includes('SAK'),
+
+            isFeatured:
+              modelNo.includes('SAK'),
+
             category: 'Casting'
           };
+
         })
     );
 
     res.json({ data: products });
+
   } catch (error) {
+
     console.error('Sheets fetch error:', error);
-    res.status(500).json({ error: 'Failed to load products from sheets' });
+
+    res.status(500).json({
+      error: 'Failed to load products from sheets'
+    });
   }
 };
 
+// =============================
+// GET PRODUCT DETAILS
+// =============================
 
-// For detailed product with costingItems (called when needed)
 exports.getProductByModel = async (req, res) => {
+
   try {
+
     const { modelNo } = req.params;
-    
+
     if (!modelNo) {
-      return res.status(400).json({ message: 'Model number is required' });
+      return res.status(400).json({
+        message: 'Model number is required'
+      });
     }
-    
-    const costingItems = await getCostingItems(modelNo);
 
-    // Get base product from all products
-    const allProducts = await fetchSheetData(PDF_DATA_GID);
-    const productData = allProducts.find(row => row.model_no?.trim() === modelNo);
-    
+    const costingItems =
+      await getCostingItems(modelNo);
+
+    const allProducts =
+      await fetchSheetData(PDF_DATA_GID);
+
+    const productData =
+      allProducts.find(
+        row => row.model_no?.trim() === modelNo
+      );
+
     if (!productData) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({
+        message: 'Product not found'
+      });
     }
 
-    const imageId = getDriveId(productData.image_link || productData.image);
-    const datasheetId = getDriveId(productData.pdf_link || productData.datasheet);
-    const totalAmount = costingItems.reduce((sum, item) => sum + item.amount, 0);
+    const imageId =
+      getDriveId(productData.image_link || productData.image);
+
+    const datasheetId =
+      getDriveId(productData.pdf_link || productData.datasheet);
+
+    const totalAmount =
+      costingItems.reduce(
+        (sum, item) => sum + item.amount,
+        0
+      );
 
     const product = {
+
       modelNo,
-      title: productData.product_name?.trim() || `Model ${modelNo}`,
-      description: productData.description || `High-precision casting project: ${modelNo}`,
-      imageUrl: imageId ? `https://drive.google.com/uc?id=${imageId}` : '/placeholder.jpg',
-      datasheetUrl: datasheetId ? `https://drive.google.com/file/d/${datasheetId}/view` : null,
+
+      title:
+        productData.product_name?.trim()
+        || `Model ${modelNo}`,
+
+      description:
+        productData.description
+        || `High-precision casting project: ${modelNo}`,
+
+      imageUrl:
+        imageId
+          ? `https://drive.google.com/uc?id=${imageId}`
+          : '/placeholder.jpg',
+
+      datasheetUrl:
+        datasheetId
+          ? `https://drive.google.com/file/d/${datasheetId}/view`
+          : null,
+
       costingItems,
+
       totalAmount
     };
 
     res.json(product);
+
   } catch (error) {
+
     console.error('Product details fetch failed:', error);
-    res.status(500).json({ error: 'Product details fetch failed' });
+
+    res.status(500).json({
+      error: 'Product details fetch failed'
+    });
   }
 };
 
