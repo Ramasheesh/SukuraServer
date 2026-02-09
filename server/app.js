@@ -6,7 +6,8 @@ const errorHandler = require('./middleware/errorHandler');
 const logger = require('./middleware/logger');
 const cookieParser = require('cookie-parser');
 // Import routes
-const productRoutes = require('./v1/routes/products');
+// const productRoutes = require('./v1/routes/products');
+const gSheetData = require("./v1/routes/gsheetData.js")
 const adminRoutes = require('./v1/routes/adminCrud');
 const app = express();
 const PORT = process.env.PORT || 5000; 
@@ -15,7 +16,7 @@ const PORT = process.env.PORT || 5000;
 // connectDB();
 
 app.use(cors({
-  origin: ["http://localhost:5173","https://skent.netlify.app/"], // Allow both local and deployed frontend
+  origin: [process.env.NODE_ENV === 'development',"http://localhost:5173","https://skent.netlify.app/"], // Allow both local and deployed frontend
   credentials: true
 }));
 
@@ -40,7 +41,7 @@ app.get('/v1/api/health', (req, res) => {
 });
 
 // Routes
-app.use('/v1/api/products', productRoutes);
+app.use('/v1/api/products', gSheetData);
 app.use('/v1/api/admin', adminRoutes);
 
 
