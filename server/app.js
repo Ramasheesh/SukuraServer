@@ -12,10 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 5000; 
 
 // Connect to database
-connectDB();
+// connectDB();
 
 app.use(cors({
-  origin: ["http://localhost:5173", process.env.CLIENT_URL],
+  origin: ["http://localhost:5173"],
   credentials: true
 }));
 
@@ -66,7 +66,7 @@ process.on('SIGTERM', () => {
 
 module.exports = app;
 
-
+ 
 // require('dotenv').config();
 // const express = require('express');
 // const cors = require('cors');

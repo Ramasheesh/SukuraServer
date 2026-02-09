@@ -20,7 +20,7 @@ const productSchema = new mongoose.Schema({
   totalAmount: Number,
 
   datasheetUrl: String,
-  images: [String],
+  imageUrl: [String],
 
   createdAt: {
     type: Date,
