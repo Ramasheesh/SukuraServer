@@ -12,15 +12,6 @@ router.get("/all", getAllProducts);                    // GET /api/products/ - à
 // router.get("/search", searchProducts);
 // router.get("/export/:modelNo", exportExcel);
     
-router.get("/test-sheets", async (req, res) => {
-  try {
-    const { testSheetsConnection } = require("../controllers/productController");
-    const result = await testSheetsConnection();
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 module.exports = router;
 
