@@ -10,7 +10,7 @@ const cookieParser = require('cookie-parser');
 const gSheetData = require("./v1/routes/gsheetData.js")
 const adminRoutes = require('./v1/routes/adminCrud');
 const app = express();
-const PORT = process.env.PORT || 5000; 
+const PORT = process.env.PORT || 3000; 
 
 // Connect to database
 // connectDB();
@@ -19,7 +19,7 @@ app.use(cors({
   origin: ["http://localhost:5173", process.env.CLIENT_URL], // Allow both local and deployed frontend
   credentials: true
 }));
-
+ 
 // Middleware stack - FIXED CORS
 app.use(logger);
 app.use(cookieParser());
