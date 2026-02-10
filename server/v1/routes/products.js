@@ -1,5 +1,7 @@
 // const express = require("express");
 // const router = express.Router();
+// const asyncHandler = require("../utils/asyncHandler");
+
 // const {
 //   getAllProducts,      // ✅ Google Sheets से सभी products
 //   getProductByModel,   // ✅ Model-specific costing data
@@ -7,6 +9,12 @@
 //   exportExcel
 // } = require("../controllers/productController");
 
+// router.get("/", asyncHandler(async (req, res) => {
+
+//   const data = await Model.find();
+
+//   res.json(data);
+// }));
 // // 🟢 Google Sheets Routes (Main routes frontend use करेगा)
 // router.get("/", getAllProducts);                    // GET /api/products/ - सभी products
 // router.get("/all", getAllProducts);                 // GET /api/products/all - backup route

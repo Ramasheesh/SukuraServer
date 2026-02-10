@@ -16,19 +16,13 @@ const PORT = process.env.PORT || 5000;
 // connectDB();
 
 app.use(cors({
-  origin: [process.env.NODE_ENV === 'development',"http://localhost:5173","https://skent.netlify.app/"], // Allow both local and deployed frontend
+  origin: ["http://localhost:5173",process.env.CLIENT_URL], // Allow both local and deployed frontend
   credentials: true
 }));
 
 // Middleware stack - FIXED CORS
 app.use(logger);
 app.use(cookieParser());
-// app.use(cors({
-//   origin: process.env.NODE_ENV === 'development' 
-    // ? process.env.CLIENT_URL 
-//     : 'http://localhost:5173',
-//   credentials: true
-// }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -41,15 +35,20 @@ app.get('/v1/api/health', (req, res) => {
 });
 
 // Routes
-app.use('/v1/api/products', gSheetData);
+app.use('/v1/api', gSheetData);
 app.use('/v1/api/admin', adminRoutes);
-
-
-// Global error handler (must be last)
-app.use(errorHandler);
 
 const server = app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});
+
+// Global error handler (must be last)
+app.use(errorHandler);
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found"
+  });
 });
 
 // Graceful shutdown
