@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 // connectDB();
 
 app.use(cors({
-  origin: ["http://localhost:5173", process.env.CLIENT_URL], // Allow both local and deployed frontend
+  origin: process.env.CLIENT_URL || "http://localhost:5173", // Allow both local and deployed frontend
   credentials: true
 }));
  
