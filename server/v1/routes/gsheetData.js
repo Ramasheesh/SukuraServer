@@ -5,7 +5,7 @@ const {
 //   getProductByModel,  
   // searchProducts,
 //   exportExcel
-} = require("../controllers/gSheetData");
+} = require("../controllers/gsheetData");
 
 router.get("/all", getAllProducts);                    // GET /api/products/ - सभी products
 // router.get("/:modelNo", getProductByModel);         // GET /api/products/(24)M1-SAK-6AP - single product details
