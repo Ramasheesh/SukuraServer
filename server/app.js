@@ -16,11 +16,13 @@ const PORT = process.env.PORT || 3000;
 // connectDB();
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173", // Allow both local and deployed frontend
-  
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  origin: [
+    "http://localhost:5173",
+    "https://skent.netlify.app"
+  ],
   credentials: true
 }));
+
  
 // Middleware stack - FIXED CORS
 app.use(logger);
