@@ -17,6 +17,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors({
   origin: process.env.CLIENT_URL || "http://localhost:5173", // Allow both local and deployed frontend
+  
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true
 }));
  
@@ -38,17 +40,19 @@ app.get('/v1/api/health', (req, res) => {
 app.use('/v1/api', gSheetData);
 app.use('/v1/api/admin', adminRoutes);
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
-
-// Global error handler (must be last)
-app.use(errorHandler);
+// 404 handler (before global error handler)
 app.use((req, res, next) => {
   res.status(404).json({
     success: false,
     message: "Route not found"
   });
+});
+
+// Global error handler (must be last)
+app.use(errorHandler);
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
 // Graceful shutdown
