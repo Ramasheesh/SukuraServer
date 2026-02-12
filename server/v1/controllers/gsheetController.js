@@ -1,5 +1,8 @@
 const { fetchSheetData } = require("../../utils/sheetUtils");
-const { getDriveId } = require("../../utils/driveUtils");
+const {getDriveId,
+  buildDriveImageUrl,
+  buildDrivePdfUrl
+} = require("../../utils/driveUtils");
 const { extractCastingTable } = require("../../utils/castingParser");
 
 const PRODUCTS_GID = "0";
@@ -36,28 +39,28 @@ async function refreshData(force = false) {
 
     const result = products.map(row => {
 
-      const imageId = getDriveId(row.imageUrl);
-      const datasheetId = getDriveId(row.datasheet);
+      const imageId = buildDriveImageUrl(row.imageUrl);
+      const datasheetId = buildDrivePdfUrl(row.datasheet);
       // casting extraction
       const costingItems = extractCastingTable(
         casting,
         row.castingTableSheetName
       );
-
-      return {
+        // console.log('costingItems: ', costingItems);
+      const data= {
         id: row.id,
         modelNo: row.modelNo,
         title: row.modelName,
         totalPrice: Number(row.totalPrice || 0),
         castingTableSheetName: row.castingTableSheetName,
         costingItems: costingItems || [],
-        imageUrl: imageId
-          ? `https://drive.google.com/uc?id=${imageId}`
-          : null,
+        imageUrl: imageId,
         datasheetUrl: datasheetId
-          ? `https://drive.google.com/file/d/${datasheetId}/view`
-          : null
+          
       };
+      console.log('data: ', data);
+
+      return data;
     });
 
     cache.data = result;

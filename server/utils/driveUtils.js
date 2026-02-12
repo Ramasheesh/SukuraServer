@@ -18,12 +18,12 @@ const getDriveId = (url) => {
 
 const buildDriveImageUrl = (id) => {
   if (!id) return null;
-  return `https://drive.google.com/uc?id=${id}`;
+  return `${id}/view`;
 };
 
 const buildDrivePdfUrl = (id) => {
   if (!id) return null;
-  return `https://drive.google.com/file/d/${id}/view`;
+  return `${id}/preview`;
 };
 
 module.exports = {
