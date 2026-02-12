@@ -7,7 +7,7 @@ const logger = require('./middleware/logger');
 const cookieParser = require('cookie-parser');
 // Import routes
 // const productRoutes = require('./v1/routes/products');
-const gSheetData = require("./v1/routes/gsheetData.js")
+const gSheetData = require("./v1/routes/gsheetRoutes")
 const adminRoutes = require('./v1/routes/adminCrud');
 const app = express();
 const PORT = process.env.PORT || 3000; 
