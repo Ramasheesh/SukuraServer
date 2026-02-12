@@ -5,49 +5,44 @@ const { extractCastingTable } = require("../../utils/castingParser");
 const PRODUCTS_GID = "0";
 const CASTING_GID = "336099973";
 
-
-// simple cache (avoid sheet load every request)
-let CACHE = {
-  products: null,
-  casting: null,
-  lastFetch: 0
+// CACHE SYSTEM
+let cache = {
+  data: [],
+  lastUpdated: 0,
+  loading: false
 };
 
-const CACHE_TIME = 5 * 60 * 1000;
+const CACHE_TIME = 10 * 60 * 1000; // 10 min cache
 
+async function refreshData(force = false) {
 
-// load sheets
-const loadSheets = async () => {
+  // avoid multiple parallel loads
+  if (cache.loading) return;
 
-  if (CACHE.products && Date.now() - CACHE.lastFetch < CACHE_TIME) {
-    return CACHE;
+  // cache valid -> skip reload
+  if (!force && Date.now() - cache.lastUpdated < CACHE_TIME) {
+    return;
   }
-
-  const [products, casting] = await Promise.all([
-    fetchSheetData(PRODUCTS_GID),
-    fetchSheetData(CASTING_GID)
-  ]);
-
-  CACHE.products = products;
-  CACHE.casting = casting;
-  CACHE.lastFetch = Date.now();
-
-  return CACHE;
-
-};
-
-// GET ALL PRODUCTS
-
-exports.getAllProducts = async (req, res) => {
 
   try {
 
-    const { products } = await loadSheets();
+    cache.loading = true;
+    console.log("Refreshing from Google Sheets...");
+
+    const [products, casting] = await Promise.all([
+      fetchSheetData(PRODUCTS_GID),
+      fetchSheetData(CASTING_GID)
+    ]);
 
     const result = products.map(row => {
 
       const imageId = getDriveId(row.imageUrl);
       const datasheetId = getDriveId(row.datasheet);
+      // casting extraction
+      const costingItems = extractCastingTable(
+        casting,
+        row.castingTableSheetName
+      );
 
       return {
         id: row.id,
@@ -55,6 +50,7 @@ exports.getAllProducts = async (req, res) => {
         title: row.modelName,
         totalPrice: Number(row.totalPrice || 0),
         castingTableSheetName: row.castingTableSheetName,
+        costingItems: costingItems || [],
         imageUrl: imageId
           ? `https://drive.google.com/uc?id=${imageId}`
           : null,
@@ -62,132 +58,84 @@ exports.getAllProducts = async (req, res) => {
           ? `https://drive.google.com/file/d/${datasheetId}/view`
           : null
       };
-
     });
 
-    res.json(result);
-
+    cache.data = result;
+    cache.lastUpdated = Date.now();
   } catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({ error: "Failed to load products" });
-
+    console.log("Refresh Error:", err);
+      
+  } finally {
+    cache.loading = false;
   }
+}
 
+// preload server start
+refreshData(true);
+
+// ================= API =================
+
+// FAST response API
+exports.getAllProducts = async (req, res) => {
+  // if empty cache -> wait first load only
+  if (!cache.data.length) {
+    await refreshData(true);
+  }
+  // instant response
+  res.json(cache.data);
+  // background refresh (no waiting)
+  refreshData();
 };
 
 // GET PRODUCT BY MODEL
 
-exports.getProductByModel = async (req, res) => {
+exports.getProductByModel = (req,res)=>{
 
-  try {
+  const model = req.params.modelNo;
 
-    const { id } = req.params;
+  const product = cache.data.find(
+    p => p.modelNo === model
+  );
 
-    const { products, casting } = await loadSheets();
+  res.json(product || {});
+}
 
-    const product = products.find(p => p.modelNo === id);
-
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    const costingItems = extractCastingTable(
-      casting,
-      product.castingTableSheetName
-    );
-
-    res.json({
-      ...product,
-      costingItems
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({ error: "Fetch failed" });
-
-  }
-
-};
 
 // search
-exports.searchProducts = async (req, res) => {
+exports.searchProducts = (req, res) => {
 
-  try {
+  const q = req.query.q?.toLowerCase() || "";
 
-    const { q } = req.query;
-
-    if (!q) {
-      return res.json([]);
-    }
-
-    const { products } = await loadSheets();
-
-    const regex = new RegExp(q, "i");
-
-    const result = products.filter(p =>
-      regex.test(p.modelNo) ||
-      regex.test(p.modelName || "")
-    );
-
-    res.json(result);
-
-  } catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({
-      error: "Search failed"
-    });
-
-  }
-
+  const results = cache.data.filter(p =>
+    p.modelNo.toLowerCase().includes(q) ||
+    p.title.toLowerCase().includes(q)
+  );
+  res.json(results);
 };
+
 // filter
-exports.filterProducts = async (req, res) => {
-
-  try {
-
-    const { category } = req.query;
-
-    const { products } = await loadSheets();
-
-    let result = products;
-
-    if (category) {
-
-      result = products.filter(p =>
-        (p.category || "").toLowerCase() === category.toLowerCase()
-      );
-
-    }
-
-    res.json(result);
-
-  } catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({
-      error: "Filter failed"
-    });
-
+exports.filterProducts = (req, res) => {
+  const { category, sort } = req.query;
+  let products = [...cache.data];
+  if (category && category !== "All") {
+    products = products.filter(p =>
+      p.modelNo.startsWith(category)
+    );
   }
-
+  if (sort === "price_asc") {
+    products.sort((a,b) => a.totalPrice - b.totalPrice);
+  }
+  if (sort === "price_desc") {
+    products.sort((a,b) => b.totalPrice - a.totalPrice);
+  }
+  res.json(products);
 };
 
 // download file
 exports.downloadDatasheet = async (req, res) => {
-
   try {
-
     const { modelNo } = req.params;
-
     const { products } = await loadSheets();
-
     const product = products.find(p => p.modelNo === modelNo);
 
     if (!product) {
@@ -197,19 +145,15 @@ exports.downloadDatasheet = async (req, res) => {
     }
 
     const fileId = getDriveId(product.datasheet);
-
     const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
     res.redirect(downloadUrl);
 
   } catch (err) {
-
     console.error(err);
-
     res.status(500).json({
       error: "Download failed"
     });
-
   }
 
 };
