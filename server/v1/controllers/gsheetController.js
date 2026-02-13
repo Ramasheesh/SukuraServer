@@ -46,7 +46,7 @@ async function refreshData(force = false) {
         casting,
         row.castingTableSheetName
       );
-        // console.log('costingItems: ', costingItems);
+        console.log('costingItems: ', costingItems);
       const data= {
         id: row.id,
         modelNo: row.modelNo,
@@ -58,7 +58,7 @@ async function refreshData(force = false) {
         datasheetUrl: datasheetId
           
       };
-      console.log('data: ', data);
+      // console.log('data: ', data);
 
       return data;
     });
