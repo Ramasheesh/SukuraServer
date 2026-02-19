@@ -167,7 +167,7 @@ exports.downloadDatasheet = async (req, res) => {
 };
 
 // excel file
-const ExcelJS = require("exceljs");
+// const ExcelJS = require("exceljs");
 
 exports.exportExcel = async (req, res) => {
 
