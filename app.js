@@ -18,7 +18,7 @@ const port = process.env.PORT || 3000;
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://skent.netlify.app"
+    "https://sk-ent.netlify.app"
   ],
   credentials: true
 }));
@@ -32,11 +32,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Security middleware
 app.use(require('helmet')());
-
-// Health check
-app.get('/v1/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
 
 // Routes
 app.use('/v1/api', gSheetData);
@@ -71,45 +66,3 @@ process.on('SIGTERM', () => {
 });
 
 module.exports = app;
-
- 
-// require('dotenv').config();
-// const express = require('express');
-// const cors = require('cors');
-// const helmet = require('helmet');
-
-// const connectDB = require('./connections/DB');
-
-// // ✅ IMPORT ALL MIDDLEWARE FIRST
-// const errorHandler = require('./middleware/errorHandler');
-// const logger = require('./middleware/logger');
-// const adminAuth = require('./middleware/adminAuth'); // Your new middleware
-
-// const app = express();
-// const PORT = process.env.PORT || 5000;
-
-// connectDB();
-
-// app.use(logger);
-// app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
-// app.use(helmet());
-// app.use(express.json({ limit: '10mb' }));
-// app.use(express.urlencoded({ extended: true }));
-
-// // Routes FIRST (before error handlers)
-// app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
-
-// // Admin routes
-// app.use('/api/admin', require('./v1/routes/admin'));
-
-// // 404 handler (before global error handler)
-// app.use('*', (req, res) => {
-//   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
-// });
-
-// // GLOBAL ERROR HANDLER LAST (4 params identifies it as error handler)
-// app.use(errorHandler); // ← This must be a FUNCTION
-
-// const server = app.listen(PORT, () => {
-//   console.log(`Server running on port ${PORT}`);
-// });
