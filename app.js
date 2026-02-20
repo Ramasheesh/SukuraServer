@@ -22,9 +22,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-  origin: [
-    "https://sk-ent.netlify.app"
-  ],
+  origin: "*" || process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
 
