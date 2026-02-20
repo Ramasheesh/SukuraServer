@@ -17,7 +17,7 @@ const port = process.env.PORT || 3000;
 
 app.use(cors({
   origin: [
-    "http://localhost:5173",
+    // "http://localhost:5173",
     "https://sk-ent.netlify.app"
   ],
   credentials: true
