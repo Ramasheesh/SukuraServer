@@ -22,7 +22,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-  origin: ["*", process.env.CORS_ORIGIN , 'http://localhost:5173'],
+  origin: "*" || process.env.CORS_ORIGIN ,
   credentials: true
 }));
 
